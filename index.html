@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>DELTA SHOP 1</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --bg: #0d0d16; --cyan: #00f2ff; --gold: #ffcc00; --card: #161625; }
+        body { background: var(--bg); color: white; font-family: sans-serif; padding: 15px; margin: 0; }
+        .box { background: var(--card); padding: 15px; border-radius: 15px; border: 1px solid #333; margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #000; color: #fff; box-sizing: border-box; }
+        button { border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-main { background: var(--cyan); color: #000; }
+        .btn-gold { background: var(--gold); color: #000; }
+        .st-Success { color: #00ff88; } .st-Fail { color: #ff4444; } .st-Pending { color: var(--gold); }
+        table { width:100%; font-size:11px; } td { padding: 8px; border-bottom: 1px solid #222; }
+        .key-box { background: rgba(0,242,255,0.05); padding: 8px; border: 1px dashed var(--cyan); color: var(--cyan); margin-top: 5px; font-size: 11px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div id="auth" class="box" style="max-width:400px; margin:auto;">
+        <div id="l-f">
+            <h3 style="text-align:center">SHOP 1 - LOGIN</h3>
+            <input type="text" id="au" placeholder="Tên tài khoản...">
+            <input type="password" id="ap" placeholder="Mật khẩu...">
+            <button class="btn-main" onclick="login()">ĐĂNG NHẬP</button>
+            <button style="background:none; color:#888; font-size:11px;" onclick="document.getElementById('l-f').style.display='none';document.getElementById('r-f').style.display='block'">Chưa có acc? Đăng ký</button>
+        </div>
+        <div id="r-f" style="display:none">
+            <h3 style="text-align:center">SHOP 1 - REGISTER</h3>
+            <input type="text" id="ru" placeholder="Tên muốn tạo...">
+            <input type="password" id="rp" placeholder="Mật khẩu...">
+            <button class="btn-main" style="background:#00ff88" onclick="reg()">ĐĂNG KÝ</button>
+            <button style="background:none; color:#888; font-size:11px;" onclick="document.getElementById('r-f').style.display='none';document.getElementById('l-f').style.display='block'">Đã có acc? Đăng nhập</button>
+        </div>
+    </div>
+
+    <div id="ui" style="display:none; max-width:500px; margin:auto;">
+        <div id="sv-off" class="box" style="display:none; background:#441111; color:#ffaaaa; text-align:center; font-weight:bold;">⚠️ SERVER ĐANG ĐÓNG ĐỂ BẢO TRÌ</div>
+        
+        <div class="box">
+            Sếp: <b id="u-id" style="color:var(--cyan)"></b> | Ví: <b id="u-bl" style="color:var(--gold)">0</b>đ
+            <input type="number" id="n-amt" placeholder="Số tiền nạp...">
+            <button class="btn-gold sv-btn" onclick="nap()">NẠP TIỀN</button>
+            <div id="qr" style="display:none; text-align:center; margin-top:10px;">
+                <img id="q-img" style="width:160px; border: 2px solid #fff;">
+                <button class="btn-main" onclick="guiDon()">XÁC NHẬN ĐÃ BANK</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h4>🎲 RANDOM GIÁ RẺ</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="btn-main sv-btn" onclick="buyR('r_tuan', 20000, 12, 'tuan')">TUẦN (20K)</button>
+                <button class="btn-main sv-btn" onclick="buyR('r_thang', 40000, 10, 'thang')">THÁNG (40K)</button>
+                <button class="btn-main sv-btn" style="grid-column: span 2" onclick="buyR('r_nam', 80000, 50, 'nam')">NĂM (80K)</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h4>💎 MUA THẲNG (CỐ ĐỊNH)</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="btn-gold sv-btn" onclick="buyD('ngay', 20000)">NGÀY (20K)</button>
+                <button class="btn-gold sv-btn" onclick="buyD('tuan', 40000)">TUẦN (40K)</button>
+                <button class="btn-gold sv-btn" onclick="buyD('thang', 80000)">THÁNG (80K)</button>
+                <button class="btn-gold sv-btn" onclick="buyD('nam', 300000)">NĂM (300K)</button>
+            </div>
+        </div>
+
+        <div class="box"><span style="font-size:12px;color:#888">🔑 KEY ĐÃ MUA</span><div id="h-keys"></div></div>
+        <div class="box"><span style="font-size:12px;color:#888">🕒 LỊCH SỬ NẠP</span><table><tbody id="h-pay"></tbody></table></div>
+    </div>
+
+<script>
+    const config = { apiKey: "AIzaSyBk6R1TDZeAxh37JQLgL_6Wl0v8m8Sg0", databaseURL: "https://shopctv-61f96-default-rtdb.asia-southeast1.firebasedatabase.app/" };
+    firebase.initializeApp(config); const db = firebase.database(); let cur = null;
+
+    // Liên kết Đóng/Mở Server
+    db.ref('system/shop1/status').on('value', s => {
+        const off = s.val() === 'Closed';
+        document.getElementById('sv-off').style.display = off ? 'block' : 'none';
+        document.querySelectorAll('.sv-btn').forEach(b => b.disabled = off);
+    });
+
+    function reg() {
+        const u = document.getElementById('ru').value.trim().toLowerCase(), p = document.getElementById('rp').value;
+        if(u.length < 3) return;
+        db.ref('users_shop1/'+u).once('value', s => {
+            if(s.exists()) return alert("Trùng tên!");
+            db.ref('users_shop1/'+u).set({password:p, balance:0, status:'Active'}).then(()=>alert("Xong!"));
+        });
+    }
+
+    function login(){
+        const u = document.getElementById('au').value.trim().toLowerCase(), p = document.getElementById('ap').value;
+        db.ref('users_shop1/'+u).once('value', s => {
+            const d = s.val();
+            if(d && d.password == p){
+                if(d.status === 'Banned') return alert("Bị Ban!");
+                cur = u; document.getElementById('auth').style.display='none'; document.getElementById('ui').style.display='block';
+                document.getElementById('u-id').innerText = u;
+                db.ref('users_shop1/'+u+'/balance').on('value', b => document.getElementById('u-bl').innerText = (b.val()||0).toLocaleString());
+                db.ref('history_pay/'+u).on('value', h => {
+                    const t = document.getElementById('h-pay'); t.innerHTML = "";
+                    let arr = []; h.forEach(c => arr.push(c.val()));
+                    arr.reverse().forEach(i => {
+                        let st = i.status==='Success'?'Thành công':(i.status==='Fail'?'Hủy':'Chờ');
+                        t.innerHTML += `<tr><td>${i.time}</td><td>${Number(i.amount).toLocaleString()}đ</td><td class="st-${i.status}">${st}</td></tr>`;
+                    });
+                });
+                db.ref('history_keys/'+u).on('value', h => {
+                    const b = document.getElementById('h-keys'); b.innerHTML = "";
+                    h.forEach(c => { if(c.val().key !== 'Không trúng') b.innerHTML += `<div class="key-box">${c.val().type}: ${c.val().key}</div>`; });
+                });
+            } else alert("Sai!");
+        });
+    }
+
+    function nap(){
+        const a = document.getElementById('n-amt').value; if(a < 1000) return;
+        document.getElementById('q-img').src = `https://qr.sepay.vn/img?acc=0588807300000&bank=MB&amount=${a}&des=NAP%20${cur}`;
+        document.getElementById('qr').style.display='block';
+    }
+
+    function guiDon(){
+        const rid = db.ref('bank_requests').push().key, t = new Date().toLocaleTimeString();
+        db.ref('bank_requests/'+rid).set({user:cur, amount:document.getElementById('n-amt').value, shop:'users_shop1', status:'Pending', id:rid, time:t});
+        db.ref('history_pay/'+cur+'/'+rid).set({time:t, amount:document.getElementById('n-amt').value, status:'Pending', id:rid});
+        alert("Đã gửi đơn!"); document.getElementById('qr').style.display='none';
+    }
+
+    function buyD(t, p){
+        db.ref('users_shop1/'+cur).once('value', s => {
+            if(s.val().balance < p) return alert("Hết tiền!");
+            db.ref('keys/shop1/'+t).limitToFirst(1).once('value', k => {
+                if(!k.val()) return alert("Hết key!");
+                const kid = Object.keys(k.val())[0], kv = k.val()[kid];
+                db.ref('users_shop1/'+cur+'/balance').set(s.val().balance - p);
+                db.ref('keys/shop1/'+t+'/'+kid).remove();
+                db.ref('history_keys/'+cur).push({time:new Date().toLocaleString(), type:'Mua '+t, key:kv});
+                alert("Key: "+kv);
+            });
+        });
+    }
+
+    function buyR(t, p, l, tg){
+        db.ref('users_shop1/'+cur).once('value', s => {
+            if(s.val().balance < p) return alert("Hết tiền!");
+            db.ref('sys/v1/'+t).transaction(c => (c || 0) + 1, (err, com, snap) => {
+                db.ref('users_shop1/'+cur+'/balance').set(s.val().balance - p);
+                if(snap.val() % l === 0){
+                    db.ref('keys/shop1/'+tg).limitToFirst(1).once('value', k => {
+                        if(!k.val()) return alert("Trúng nhưng hết key!");
+                        const kid = Object.keys(k.val())[0], kv = k.val()[kid];
+                        db.ref('keys/shop1/'+tg+'/'+kid).remove();
+                        db.ref('history_keys/'+cur).push({time:new Date().toLocaleString(), type:'Quay '+tg, key:kv});
+                        alert("TRÚNG: "+kv);
+                    });
+                } else {
+                    db.ref('history_keys/'+cur).push({time:new Date().toLocaleString(), type:'Quay '+tg, key:'Không trúng'});
+                    alert("Hụt rồi!");
+                }
+            });
+        });
+    }
+</script>
+</body>
+</html>
